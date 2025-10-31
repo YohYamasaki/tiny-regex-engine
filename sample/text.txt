@@ -1,0 +1,9 @@
+apple
+banana
+orange
+grape
+pineapple
+123-456-7890
+error: file not found
+warning: low memory
+success: operation complete

@@ -40,10 +40,21 @@ impl Generator {
             AST::Char(c) => self.gen_char(*c)?,
             AST::Or(e1, e2) => self.gen_or(e1, e2)?,
             AST::Plus(e) => self.gen_plus(e)?,
-            AST::Star(e) => self.gen_star(e)?,
+            AST::Star(e1) => match &**e1 {
+                AST::Star(_) => self.gen_expr(&e1)?,
+                AST::Seq(e2) if e2.len() == 1 => {
+                    if let Some(e3 @ AST::Star(_)) = e2.get(0) {
+                        self.gen_expr(e3)?
+                    } else {
+                        self.gen_star(e1)?
+                    }
+                }
+                e => self.gen_star(&e)?,
+            },
             AST::Question(e) => self.gen_question(e)?,
             AST::Seq(v) => self.gen_seq(v)?,
         }
+
         Ok(())
     }
 
@@ -129,6 +140,7 @@ impl Generator {
     /// ```
     fn gen_star(&mut self, e: &AST) -> Result<(), CodeGenError> {
         let l1 = self.pc;
+        self.inc_pc()?;
         self.insts.push(Instruction::Split(self.pc, 0)); // L2 = self.pc, L3 starts from 0
 
         // L2: generate the code for e
@@ -176,7 +188,7 @@ impl Generator {
     }
 }
 
-fn get_code(ast: &AST) -> Result<Vec<Instruction>, CodeGenError> {
+pub(crate) fn get_code(ast: &AST) -> Result<Vec<Instruction>, CodeGenError> {
     let mut generator = Generator::default();
     generator.gen_code(ast)?;
     Ok(generator.insts)
